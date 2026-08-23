@@ -2,22 +2,31 @@
 
 /**
  * The live first-person view: the SDK's video element plus a HUD (travel
- * clock, control hints, end-travel). WASD/arrow-key input is bound for as long
- * as the stream accepts input.
+ * clock, control hints, end-travel, room switcher). WASD/arrow-key input is
+ * bound for as long as the stream accepts input.
  */
 import { useEffect, useState } from "react";
 import { ReactorWorldVideo, ADVENTURE_MAX_EXPERIENCE_SEC, type ReactorWorld } from "@/lib/reactor/world-provider";
 import { useAdventureControls } from "@/lib/reactor/controls";
 import { StageOverlay } from "./stage-overlay";
+import { RoomSwitcherHUD, type RoomWorldInfo } from "./room-switcher";
 
 export function LiveWorld({
   world,
   onEnterAgain,
   onNewWorld,
+  rooms,
+  activeRoomId,
+  switching,
+  onSwitchRoom,
 }: {
   world: ReactorWorld;
   onEnterAgain: () => void;
   onNewWorld: () => void;
+  rooms?: RoomWorldInfo[];
+  activeRoomId?: string;
+  switching?: boolean;
+  onSwitchRoom?: (roomId: string) => void;
 }) {
   const { streaming, phase, endTravelSession } = world;
   const budget = world.maxExperienceTimeSec ?? ADVENTURE_MAX_EXPERIENCE_SEC;
@@ -45,6 +54,14 @@ export function LiveWorld({
           <span className="clock">
             {Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, "0")} left
           </span>
+          {rooms && activeRoomId && onSwitchRoom && (
+            <RoomSwitcherHUD
+              rooms={rooms}
+              activeRoomId={activeRoomId}
+              switching={Boolean(switching)}
+              onSwitch={onSwitchRoom}
+            />
+          )}
           <span className="hint">
             <b>WASD</b> move · <b>←↑↓→</b> look · <b>Space</b> jump · <b>Shift</b> sprint
           </span>

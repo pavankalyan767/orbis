@@ -19,6 +19,7 @@ import { getReactorJwt } from "@/lib/reactor/token";
 import { WorldForm } from "./world-form";
 import { LiveWorld } from "./live-world";
 import { StageOverlay } from "./stage-overlay";
+import { RoomSwitcherHUD, useRoomSwitcherState } from "./room-switcher";
 
 const CONNECTION_LABELS: Record<string, string> = {
   idle: "Idle",
@@ -41,6 +42,8 @@ export function WorldConsole() {
 function Console() {
   const world = useReactorWorld();
   const { phase, worldState, streaming } = world;
+
+  const roomSwitcher = useRoomSwitcherState();
 
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -97,6 +100,7 @@ function Console() {
       });
       if (created.encrypted_world_id && typeof window !== "undefined") {
         window.localStorage.setItem("reactor-world-id", created.encrypted_world_id);
+        roomSwitcher.saveRoomWorld(roomSwitcher.activeRoomId, created.encrypted_world_id);
       }
       setFormOpen(false);
     } catch (submitError) {
@@ -104,7 +108,7 @@ function Console() {
     } finally {
       setSubmitting(false);
     }
-  }, []);
+  }, [roomSwitcher]);
 
   const enterAgain = useCallback(async () => {
     setError(null);
@@ -143,39 +147,61 @@ function Console() {
     !submitting &&
     (formOpen || worldPhase === "no_world" || worldPhase === "failed");
 
+  const combinedError = error || roomSwitcher.switchError;
+
   return (
     <main className="console">
       <header className="console-header">
         <h1>
           Orbis <span>·</span> Happy Oyster
         </h1>
+        <RoomSwitcherHUD
+          rooms={roomSwitcher.rooms}
+          activeRoomId={roomSwitcher.activeRoomId}
+          switching={roomSwitcher.switching}
+          onSwitch={(targetId) => {
+            const room = roomSwitcher.rooms.find((r) => r.id === targetId);
+            if (!room?.worldId) {
+              roomSwitcher.setActiveRoomId(targetId);
+              setFormOpen(true);
+            } else {
+              roomSwitcher.switchRoom(targetId, world);
+            }
+          }}
+        />
         <span className="connection-chip" data-state={phase}>
           <span className="dot" />
           {CONNECTION_LABELS[phase] ?? phase}
         </span>
       </header>
 
-      {(error || phase === "failed") && (
+      {(combinedError || phase === "failed") && (
         <div className="error-banner">
           <span>
-            {error ?? "Connection to Reactor failed — check REACTOR_API_KEY and your network."}{" "}
+            {combinedError ?? "Connection to Reactor failed — check REACTOR_API_KEY and your network."}{" "}
             {phase === "failed" && (
               <button className="link-button" onClick={reconnect}>
                 Reconnect
               </button>
             )}
           </span>
-          {error && (
-            <button onClick={() => setError(null)} aria-label="Dismiss">
-              ✕
-            </button>
-          )}
+          <button onClick={() => { setError(null); roomSwitcher.setSwitchError(null); }} aria-label="Dismiss">
+            ✕
+          </button>
         </div>
       )}
 
       <section className="stage" aria-label="World view">
         {showVideo ? (
-          <LiveWorld world={world} onEnterAgain={() => void enterAgain()} onNewWorld={() => setFormOpen(true)} />
+          <LiveWorld
+            world={world}
+            onEnterAgain={() => void enterAgain()}
+            onNewWorld={() => setFormOpen(true)}
+            rooms={roomSwitcher.rooms}
+            activeRoomId={roomSwitcher.activeRoomId}
+            switching={roomSwitcher.switching}
+            onSwitchRoom={(targetId) => roomSwitcher.switchRoom(targetId, world)}
+          />
         ) : buildingWorld ? (
           <StageOverlay
             spinner
