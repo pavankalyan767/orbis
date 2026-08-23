@@ -21,7 +21,6 @@ import { LiveWorld } from "./live-world";
 import { StageOverlay } from "./stage-overlay";
 
 const CONNECTION_LABELS: Record<string, string> = {
-  idle: "Initializing",
   connecting: "Connecting…",
   connected: "Connected",
   starting_stream: "Opening stream",
@@ -40,14 +39,12 @@ export function WorldConsole() {
 
 function Console() {
   const world = useReactorWorld();
-  const { phase, worldState, streaming, disconnect } = world;
+  const { phase, worldState, streaming } = world;
 
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formOpen, setFormOpen] = useState(true);
-  
-  // One auto-start per world: after the platform ends a travel (2-min budget)
-  // we show explicit actions instead of looping into a new one.
+
   const startAttempted = useRef(false);
   const worldRef = useRef(world);
   worldRef.current = world;
@@ -58,22 +55,28 @@ function Console() {
 
   const worldPhase = worldState?.phase ?? "no_world";
   const buildingWorld = worldPhase === "creating" || worldPhase === "building";
-  // Only mount the <video> when actively traveling/streaming — not when merely
-  // "ready", so the explicit "Enter world" overlay can show.
-  const showVideo = worldPhase === "traveling" || streaming;
-  const connected = phase === "connected" || phase === "starting_stream" || phase === "streaming";
+  
+  // Video element MUST remain mounted whenever a world is ready, traveling, or stream is starting,
+  // so <ReactorWorldVideo /> is in the DOM when startTravel() is called.
+  const showVideo =
+    worldPhase === "ready" ||
+    worldPhase === "traveling" ||
+    streaming ||
+    phase === "starting_stream";
 
-  // DEV SAFETY: Do NOT auto-enter the world. Each startTravel() costs credits,
-  // and hot-reloads during development re-mount the provider, which would
-  // silently start new travel sessions. The user must click "Enter world".
+  const connected =
+    phase === "connected" ||
+    phase === "starting_stream" ||
+    phase === "streaming";
 
-  // DEV SAFETY: Auto-disconnect every 20 seconds during development to prevent
-  // runaway credit usage if left idle or looping.
+  // DEV SAFETY: Auto-end travel after 20 seconds of streaming during development.
+  // We call endTravelSession() instead of disconnect() so WebRTC stream stops,
+  // credit burn stops, but the Reactor session & world remain attached and ready!
   useEffect(() => {
     if (process.env.NODE_ENV !== "development" || !streaming) return;
     const timer = setTimeout(() => {
-      console.warn("Dev safety: auto-disconnecting after 20s to save credits.");
-      worldRef.current.disconnect();
+      console.warn("Dev safety: ending travel session after 20s to save credits.");
+      worldRef.current.endTravelSession().catch(() => {});
     }, 20_000);
     return () => clearTimeout(timer);
   }, [streaming]);
@@ -83,7 +86,11 @@ function Console() {
     setSubmitting(true);
     startAttempted.current = false;
     try {
-      if (worldRef.current.phase === "idle" || worldRef.current.phase === "disconnected") {
+      if (worldRef.current.streaming) {
+        await worldRef.current.endTravelSession();
+      }
+      const p = worldRef.current.phase;
+      if (p === "ended" || p === "failed") {
         await worldRef.current.connect(getReactorJwt);
       }
       const created = await worldRef.current.createWorld({
@@ -91,8 +98,7 @@ function Console() {
         perspective: "first_person",
         ...(image ? { firstFrameImage: image } : {}),
       });
-      // Worlds persist beyond the session — keep the id for a later attachWorld.
-      if (created.encrypted_world_id) {
+      if (created.encrypted_world_id && typeof window !== "undefined") {
         window.localStorage.setItem("reactor-world-id", created.encrypted_world_id);
       }
       setFormOpen(false);
@@ -107,6 +113,19 @@ function Console() {
     setError(null);
     startAttempted.current = true;
     try {
+      const p = worldRef.current.phase;
+      if (p === "ended" || p === "failed") {
+        await worldRef.current.connect(getReactorJwt);
+      }
+      
+      const savedWorldId =
+        worldRef.current.worldState?.encrypted_world_id ||
+        (typeof window !== "undefined" ? window.localStorage.getItem("reactor-world-id") : null);
+
+      if (!worldRef.current.worldState && savedWorldId) {
+        await worldRef.current.attachWorld(savedWorldId);
+      }
+
       await worldRef.current.startTravel();
     } catch (startError) {
       startAttempted.current = false;
@@ -167,19 +186,6 @@ function Console() {
             subtitle="Happy Oyster is generating the world from your prompt and reference image. This usually takes under a minute."
             imageUrl={worldState?.first_frame ?? null}
           />
-        ) : worldPhase === "ready" ? (
-          <StageOverlay
-            title="World ready"
-            subtitle="Your world has been generated. Click below to step in and explore."
-            imageUrl={worldState?.first_frame ?? null}
-          >
-            <button className="primary" onClick={() => void enterAgain()}>
-              Enter world
-            </button>
-            <button className="secondary" onClick={() => setFormOpen(true)}>
-              Build a new world
-            </button>
-          </StageOverlay>
         ) : worldPhase === "failed" ? (
           <StageOverlay
             title="World build failed"
@@ -187,18 +193,14 @@ function Console() {
           />
         ) : (
           <StageOverlay
-            title={connected ? "No world yet" : "Waiting for connection"}
-            subtitle={
-              connected
-                ? "Describe a world below, attach a reference image, and generate it."
-                : "Connecting to the Reactor Happy Oyster model…"
-            }
+            title="No world yet"
+            subtitle="Describe a world below, attach a reference image, and click Generate to connect to Happy Oyster and build it."
           />
         )}
       </section>
 
       {showForm && (
-        <WorldForm onSubmit={handleSubmit} submitting={submitting} disabled={!connected} />
+        <WorldForm onSubmit={handleSubmit} submitting={submitting} disabled={false} />
       )}
     </main>
   );
