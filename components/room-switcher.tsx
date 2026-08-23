@@ -35,6 +35,16 @@ export function useRoomSwitcherState() {
   const [switching, setSwitching] = useState(false);
   const [switchError, setSwitchError] = useState<string | null>(null);
 
+  const initializeRooms = useCallback((newRooms: RoomWorldInfo[]) => {
+    setRooms(newRooms);
+    if (newRooms.length > 0) {
+      setActiveRoomId(newRooms[0].id);
+    }
+    if (typeof window !== "undefined") {
+      localStorage.setItem("orbis-room-worlds", JSON.stringify(newRooms));
+    }
+  }, []);
+
   const saveRoomWorld = useCallback((roomId: string, encryptedWorldId: string) => {
     setRooms((prev) => {
       const updated = prev.map((r) =>
@@ -89,6 +99,7 @@ export function useRoomSwitcherState() {
     switching,
     switchError,
     setSwitchError,
+    initializeRooms,
     saveRoomWorld,
     switchRoom,
   };
