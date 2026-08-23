@@ -33,54 +33,58 @@ export function buildRoomImagePrompt(room: Room, floorPlan: FloorPlan): string {
   ].join(' ')
 }
 
-// ─── NVIDIA NIM Inference ──────────────────────────────────────────────────────
-
-const NVIDIA_API_URL = 'https://ai.api.nvidia.com/v1/genai/qwen/qwen-image'
+// ─── Google Gemini Imagen Inference ─────────────────────────────────────────────
 
 export type RoomImageResult =
   | { ok: true;  roomId: string; dataUrl: string }
   | { ok: false; roomId: string; error: string }
 
 /**
- * Generates a room image via NVIDIA Qwen-Image API.
+ * Generates a room image via Google Gemini Imagen 3 API.
  */
 export async function generateRoomImage(
   room: Room,
   floorPlan: FloorPlan,
-  nvidiaApiKey: string,
+  googleApiKey: string,
 ): Promise<RoomImageResult> {
   const prompt = buildRoomImagePrompt(room, floorPlan)
 
+  const GOOGLE_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${googleApiKey}`
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'Authorization': `Bearer ${nvidiaApiKey}`,
   }
 
   try {
-    const response = await fetch(NVIDIA_API_URL, {
+    const response = await fetch(GOOGLE_API_URL, {
       method: 'POST',
       headers,
       body: JSON.stringify({
-        prompt,
-        seed: Math.floor(Math.random() * 10000), // Random seed to prevent exact dupes
-        aspect_ratio: '16:9' // Standardized to match Happy Oyster Reactor dimension ratio (1024x576 approx)
+        instances: [
+          {
+            prompt: prompt
+          }
+        ],
+        parameters: {
+          sampleCount: 1,
+          aspectRatio: "16:9" // Standardized to match Happy Oyster Reactor dimension ratio
+        }
       }),
       signal: AbortSignal.timeout(45_000),
     })
 
     if (!response.ok) {
       const errorText = await response.text()
-      return { ok: false, roomId: room.id, error: `NVIDIA Qwen-Image API failed (${response.status}): ${errorText.slice(0, 200)}` }
+      return { ok: false, roomId: room.id, error: `Google Imagen API failed (${response.status}): ${errorText.slice(0, 200)}` }
     }
 
     const data = await response.json()
     
-    if (!data.artifacts?.[0]?.base64) {
-      return { ok: false, roomId: room.id, error: "No image returned by Qwen Image API" }
+    if (!data.predictions?.[0]?.bytesBase64Encoded) {
+      return { ok: false, roomId: room.id, error: "No image returned by Google Imagen API" }
     }
 
-    const dataUrl = `data:image/png;base64,${data.artifacts[0].base64}`
+    const dataUrl = `data:image/jpeg;base64,${data.predictions[0].bytesBase64Encoded}`
 
     return { ok: true, roomId: room.id, dataUrl }
   } catch (err) {

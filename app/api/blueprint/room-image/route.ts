@@ -23,13 +23,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Room "${roomId}" not found in FloorPlan.` }, { status: 404 })
   }
 
-  const nvidiaApiKey = process.env.NVIDIA_API_KEY
-
-  if (!nvidiaApiKey) {
-    return NextResponse.json({ error: 'NVIDIA API key not configured' }, { status: 500 })
+  const googleApiKey = process.env.GOOGLE_API_KEY
+  if (!googleApiKey) {
+    return NextResponse.json({ error: 'Google API key not configured' }, { status: 500 })
   }
 
-  const result = await generateRoomImage(room, floorPlan, nvidiaApiKey)
+  const result = await generateRoomImage(room, floorPlan, googleApiKey)
 
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 502 })
