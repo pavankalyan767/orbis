@@ -21,6 +21,7 @@ import { LiveWorld } from "./live-world";
 import { StageOverlay } from "./stage-overlay";
 
 const CONNECTION_LABELS: Record<string, string> = {
+  idle: "Idle",
   connecting: "Connecting…",
   connected: "Connected",
   starting_stream: "Opening stream",
@@ -64,11 +65,6 @@ function Console() {
     streaming ||
     phase === "starting_stream";
 
-  const connected =
-    phase === "connected" ||
-    phase === "starting_stream" ||
-    phase === "streaming";
-
   // DEV SAFETY: Auto-end travel after 20 seconds of streaming during development.
   // We call endTravelSession() instead of disconnect() so WebRTC stream stops,
   // credit burn stops, but the Reactor session & world remain attached and ready!
@@ -90,7 +86,8 @@ function Console() {
         await worldRef.current.endTravelSession();
       }
       const p = worldRef.current.phase;
-      if (p === "ended" || p === "failed") {
+      // Connect if not already connected/streaming
+      if (p !== "connected" && p !== "starting_stream" && p !== "streaming") {
         await worldRef.current.connect(getReactorJwt);
       }
       const created = await worldRef.current.createWorld({
@@ -114,7 +111,7 @@ function Console() {
     startAttempted.current = true;
     try {
       const p = worldRef.current.phase;
-      if (p === "ended" || p === "failed") {
+      if (p !== "connected" && p !== "starting_stream" && p !== "streaming") {
         await worldRef.current.connect(getReactorJwt);
       }
       
