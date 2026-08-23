@@ -1,4 +1,5 @@
-import type { Room, FloorPlan, Point } from '@/navigation/types'
+import type { Room, FloorPlan } from '@/navigation/types'
+import { resolveLocalRoomImage } from './localRoomImages'
 
 // ─── Prompt Builder ───────────────────────────────────────────────────────────
 
@@ -34,22 +35,45 @@ export function buildRoomImagePrompt(room: Room, floorPlan: FloorPlan): string {
   ].join(' ')
 }
 
-import { puter } from '@heyputer/puter.js';
+/** Flip to true to use Puter's txt2img instead of the local images in public/rooms/. */
+export const USE_PUTER_IMAGE_GEN: boolean = false
 
 export type RoomImageResult =
   | { ok: true;  roomId: string; dataUrl: string }
   | { ok: false; roomId: string; error: string }
 
 /**
- * Generates a room image via Puter.js API (Client-side only)
+ * Resolves an image for a room.
+ *
+ * By default this serves a static file from `public/rooms/` (same origin, so it
+ * will not taint the canvas downstream). Set `USE_PUTER_IMAGE_GEN` to true to
+ * generate one via Puter.js instead — that module is imported dynamically so
+ * the Puter bundle is never loaded while the toggle is off.
  */
 export async function generateRoomImage(
   room: Room,
   floorPlan: FloorPlan,
 ): Promise<RoomImageResult> {
+  if (!USE_PUTER_IMAGE_GEN) {
+    const localPath = resolveLocalRoomImage(room.id, room.name)
+
+    if (localPath) {
+      return { ok: true, roomId: room.id, dataUrl: localPath }
+    }
+
+    return {
+      ok: false,
+      roomId: room.id,
+      error: `No local image for "${room.name}" — add a file to public/rooms/ or enable USE_PUTER_IMAGE_GEN`,
+    }
+  }
+
   const prompt = buildRoomImagePrompt(room, floorPlan)
 
   try {
+    // Dynamic import keeps Puter out of the bundle while the toggle is off.
+    const { puter } = await import('@heyputer/puter.js')
+
     // Puter returns an HTMLImageElement
     const imageElement = await puter.ai.txt2img(
       prompt + " (Please generate this in 16:9 landscape aspect ratio)",

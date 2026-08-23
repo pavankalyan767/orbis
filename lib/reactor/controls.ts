@@ -14,14 +14,14 @@ import type { AdventureCommand } from "@reactor-models/happy-oyster";
 type Translation = NonNullable<AdventureCommand["translation"]>;
 type Rotation = NonNullable<AdventureCommand["rotation"]>;
 
-const KEY_TRANSLATION: Record<string, Translation> = {
+export const KEY_TRANSLATION: Record<string, Translation> = {
   KeyW: "Front",
   KeyS: "Back",
   KeyA: "Left",
   KeyD: "Right",
 };
 
-const KEY_ROTATION: Record<string, Rotation> = {
+export const KEY_ROTATION: Record<string, Rotation> = {
   ArrowUp: "Mouse_Up",
   ArrowDown: "Mouse_Down",
   ArrowLeft: "Mouse_Left",
@@ -32,8 +32,17 @@ function isControlKey(code: string): boolean {
   return code in KEY_TRANSLATION || code in KEY_ROTATION || code === "Space" || code.startsWith("Shift");
 }
 
-/** Compose the held keys into one command; only active axes are included. */
-function composeHeld(held: Set<string>): AdventureCommand {
+/**
+ * Compose the held keys into one command.
+ *
+ * Both axes are ALWAYS emitted, including the literal "None". `hold(partial)`
+ * merges (`{...heldCommand, ...partial}`), so an omitted axis keeps its previous
+ * value — omitting a released axis would leave e.g. the camera spinning forever
+ * while another key stays down. `interaction` is deliberately never set here:
+ * Space/Shift are driven separately via interact()/hold()/release() and must not
+ * be clobbered by movement updates.
+ */
+export function composeHeld(held: Set<string>): AdventureCommand {
   const front = held.has("KeyW");
   const back = held.has("KeyS");
   const left = held.has("KeyA");
@@ -80,10 +89,7 @@ function composeHeld(held: Set<string>): AdventureCommand {
                     ? "Mouse_Right"
                     : "None";
 
-  const command: AdventureCommand = {};
-  if (translation !== "None") command.translation = translation;
-  if (rotation !== "None") command.rotation = rotation;
-  return command;
+  return { translation, rotation };
 }
 
 export interface AdventureController {
@@ -114,8 +120,11 @@ export function useAdventureControls(controller: AdventureController, enabled: b
     };
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.repeat || !isControlKey(event.code)) return;
+      if (!isControlKey(event.code)) return;
+      // Before the repeat guard: OS auto-repeat keydowns must be suppressed too,
+      // otherwise holding an arrow scrolls the page and pulls the video offscreen.
       event.preventDefault();
+      if (event.repeat) return;
       if (event.code === "Space") {
         void controllerRef.current.interact("Jump");
         return;

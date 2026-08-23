@@ -347,3 +347,94 @@
   height: 160px;
   object-fit: cover;
 }
+
+/* ── Feedback / learning loop ─────────────────────────────────────────────── */
+
+.room-feedback-input {
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: #0d1117;
+  border: 1px solid #2a3038;
+  border-radius: 6px;
+  color: #e6edf3;
+  font-family: inherit;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.room-feedback-input:focus {
+  outline: none;
+  border-color: #4a9eff;
+}
+
+.room-feedback-input::placeholder { color: #5a6472; }
+.room-feedback-input:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.room-feedback-btn { margin-top: 8px; width: 100%; }
+
+.room-feedback-error {
+  margin-top: 8px;
+  padding: 6px 8px;
+  background: rgba(255, 68, 68, 0.1);
+  border-left: 2px solid #ff4444;
+  border-radius: 4px;
+  color: #ff8888;
+  font-size: 0.78rem;
+}
+
+.room-feedback-ok {
+  margin-top: 8px;
+  padding: 6px 8px;
+  background: rgba(0, 204, 102, 0.08);
+  border-left: 2px solid #00cc66;
+  border-radius: 4px;
+  color: #9fe8c0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+/* ── Navigation HUD (dead reckoning + doorway hint) ───────────────────────── */
+
+.bp-nav-hud {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  background: #111820;
+  border: 1px solid #2a3038;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: #c9d1d9;
+}
+
+.bp-nav-coords {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #7d8896;
+  font-size: 0.78rem;
+}
+
+.bp-nav-hint {
+  padding: 3px 10px;
+  background: rgba(74, 158, 255, 0.14);
+  border-radius: 999px;
+  color: #7cc0ff;
+  font-weight: 500;
+}
+
+.bp-nav-narrating { color: #ffcc66; }
+
+.bp-narration-script {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  background: rgba(255, 204, 102, 0.07);
+  border-left: 2px solid #ffcc66;
+  border-radius: 4px;
+  color: #d9c9a3;
+  font-size: 0.88rem;
+  font-style: italic;
+  line-height: 1.55;
+}

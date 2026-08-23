@@ -36,7 +36,7 @@ export default function TestImagePage() {
     try {
       const imgData = await generateRoomImage(mockFloorPlan.rooms[0] as any, mockFloorPlan as any);
 
-      if (!imgData.ok || !imgData.dataUrl) {
+      if (!imgData.ok) {
         throw new Error(imgData.error || 'Failed to generate image');
       }
 

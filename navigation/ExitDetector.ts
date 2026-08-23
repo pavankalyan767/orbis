@@ -88,4 +88,24 @@ export class ExitDetector {
   reset(): void {
     this.activeExitId = null
   }
+
+  /**
+   * Suppresses re-triggering until the player physically leaves this exit's rect.
+   *
+   * This is the ping-pong fix.  Adjoining rooms own *mirrored* exits with
+   * identical bounds (`living-hall` and `hall-living` share one rectangle), so
+   * the instant a transition fires the player is standing inside the
+   * destination room's reverse exit.  Without priming, the very next tick would
+   * detect that reverse exit as "newly entered" and bounce the player straight
+   * back (A → B → A → B …).
+   *
+   * Priming with the destination's reverse exit id makes `check()` treat it as
+   * already-occupied, so nothing fires until the player genuinely steps out of
+   * the doorway rectangle and back in again.
+   *
+   * @param exitId - The exit to treat as already occupied, or `null` to clear.
+   */
+  prime(exitId: string | null): void {
+    this.activeExitId = exitId
+  }
 }
