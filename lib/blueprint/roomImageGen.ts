@@ -33,62 +33,54 @@ export function buildRoomImagePrompt(room: Room, floorPlan: FloorPlan): string {
   ].join(' ')
 }
 
-// ─── HuggingFace Inference ───────────────────────────────────────────────────
+// ─── NVIDIA NIM Inference ──────────────────────────────────────────────────────
 
-const HF_API_URL = 'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0'
+const NVIDIA_API_URL = 'https://ai.api.nvidia.com/v1/genai/qwen/qwen-image'
 
 export type RoomImageResult =
   | { ok: true;  roomId: string; dataUrl: string }
   | { ok: false; roomId: string; error: string }
 
 /**
- * Generates a room image via HuggingFace Inference API.
- *
- * If HUGGINGFACE_API_KEY is set in env vars it will be used (higher rate limits).
- * If not, the request is sent without auth (free tier — may be slow or unavailable).
+ * Generates a room image via NVIDIA Qwen-Image API.
  */
 export async function generateRoomImage(
   room: Room,
   floorPlan: FloorPlan,
-  hfApiKey?: string,
+  nvidiaApiKey: string,
 ): Promise<RoomImageResult> {
   const prompt = buildRoomImagePrompt(room, floorPlan)
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'Accept': 'image/png',
-  }
-  if (hfApiKey) {
-    headers['Authorization'] = `Bearer ${hfApiKey}`
+    'Accept': 'application/json',
+    'Authorization': `Bearer ${nvidiaApiKey}`,
   }
 
   try {
-    const response = await fetch(HF_API_URL, {
+    const response = await fetch(NVIDIA_API_URL, {
       method: 'POST',
       headers,
       body: JSON.stringify({
-        inputs: prompt,
-        parameters: {
-          width: 1024,
-          height: 576,
-          num_inference_steps: 30,
-          guidance_scale: 7.5,
-        },
+        prompt,
+        seed: Math.floor(Math.random() * 10000), // Random seed to prevent exact dupes
+        aspect_ratio: '16:9' // Standardized to match Happy Oyster Reactor dimension ratio (1024x576 approx)
       }),
-      // HuggingFace can be slow on cold starts — 90s timeout
-      signal: AbortSignal.timeout(90_000),
+      signal: AbortSignal.timeout(45_000),
     })
 
     if (!response.ok) {
-      const body = await response.text()
-      // Model loading (503) is normal — caller can retry
-      return { ok: false, roomId: room.id, error: `HF ${response.status}: ${body.slice(0, 200)}` }
+      const errorText = await response.text()
+      return { ok: false, roomId: room.id, error: `NVIDIA Qwen-Image API failed (${response.status}): ${errorText.slice(0, 200)}` }
     }
 
-    const blob = await response.blob()
-    const arrayBuffer = await blob.arrayBuffer()
-    const base64 = Buffer.from(arrayBuffer).toString('base64')
-    const dataUrl = `data:image/png;base64,${base64}`
+    const data = await response.json()
+    
+    if (!data.artifacts?.[0]?.base64) {
+      return { ok: false, roomId: room.id, error: "No image returned by Qwen Image API" }
+    }
+
+    const dataUrl = `data:image/png;base64,${data.artifacts[0].base64}`
 
     return { ok: true, roomId: room.id, dataUrl }
   } catch (err) {
