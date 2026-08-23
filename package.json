@@ -10,16 +10,21 @@
     "test": "jest"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.120.0",
+    "@react-three/drei": "^10.7.8",
+    "@react-three/fiber": "^9.7.0",
     "@reactor-models/happy-oyster": "0.3.0",
     "next": "15.5.9",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "three": "^0.185.1"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/three": "^0.185.4",
     "jest": "^30.4.2",
     "ts-jest": "^29.4.12",
     "typescript": "^5"

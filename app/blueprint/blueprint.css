@@ -1,0 +1,349 @@
+/* ─── Blueprint Page ─────────────────────────────────────────────────────────── */
+
+.bp-page {
+  min-height: 100vh;
+  background: #0d1117;
+  color: #e2e8f0;
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+
+.bp-header {
+  padding: 48px 40px 24px;
+  border-bottom: 1px solid #1e2533;
+  background: linear-gradient(135deg, #0d1117 0%, #111827 100%);
+}
+
+.bp-header h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 8px;
+  color: #f7fafc;
+}
+
+.bp-header h1 .accent {
+  color: #63b3ed;
+}
+
+.bp-sub {
+  font-size: 0.95rem;
+  color: #718096;
+  margin: 0;
+}
+
+/* ── Main layout ─────────────────────────────────────────────────────────── */
+
+.bp-main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* ── Upload section ──────────────────────────────────────────────────────── */
+
+.bp-upload-section {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.upload-zone {
+  flex: 1;
+  min-height: 180px;
+  border: 2px dashed #2d3748;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #111827;
+  padding: 32px;
+}
+
+.upload-zone:hover,
+.upload-zone.dragging {
+  border-color: #63b3ed;
+  background: #0f1a2e;
+  box-shadow: 0 0 0 4px rgba(99,179,237,0.1);
+}
+
+.upload-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.upload-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #a0aec0;
+  margin: 0;
+}
+
+.upload-sub {
+  font-size: 0.8rem;
+  color: #4a5568;
+  margin: 0;
+}
+
+.bp-preview {
+  width: 240px;
+  height: 180px;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid #2d3748;
+  background: #111827;
+}
+
+/* ── Status / error ──────────────────────────────────────────────────────── */
+
+.bp-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  background: #1a2035;
+  border: 1px solid #2a3550;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: #a0aec0;
+}
+
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #2d3748;
+  border-top-color: #63b3ed;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.bp-error {
+  padding: 14px 20px;
+  background: #2d1515;
+  border: 1px solid #742a2a;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: #fc8181;
+}
+
+.bp-meta {
+  padding: 12px 20px;
+  background: #132a1a;
+  border: 1px solid #276738;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: #68d391;
+}
+
+/* ── Tabs ────────────────────────────────────────────────────────────────── */
+
+.bp-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid #1e2533;
+}
+
+.bp-tabs button {
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #718096;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-bottom: -1px;
+}
+
+.bp-tabs button:hover {
+  color: #a0aec0;
+}
+
+.bp-tabs button.active {
+  color: #63b3ed;
+  border-bottom-color: #63b3ed;
+}
+
+/* ── Tab content ─────────────────────────────────────────────────────────── */
+
+.bp-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* SVG */
+.svg-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.svg-legend-note {
+  font-size: 0.8rem;
+  color: #4a5568;
+  font-style: italic;
+}
+
+.bp-svg-wrap {
+  overflow: auto;
+  border-radius: 8px;
+  border: 1px solid #1e2533;
+  max-height: 600px;
+}
+
+.bp-svg-wrap svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* 3D */
+.bp-three {
+  height: 520px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #1e2533;
+}
+
+.three-placeholder {
+  height: 520px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #111827;
+  border-radius: 8px;
+  color: #4a5568;
+  font-size: 0.9rem;
+  border: 1px solid #1e2533;
+}
+
+/* JSON */
+.json-toolbar {
+  display: flex;
+  gap: 8px;
+}
+
+.bp-json {
+  background: #111827;
+  border: 1px solid #1e2533;
+  border-radius: 8px;
+  padding: 20px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.78rem;
+  color: #a0aec0;
+  overflow: auto;
+  max-height: 480px;
+  line-height: 1.6;
+  white-space: pre;
+}
+
+/* Buttons */
+.bp-btn-sm {
+  padding: 6px 14px;
+  background: #1e2533;
+  border: 1px solid #2d3748;
+  border-radius: 6px;
+  color: #a0aec0;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.bp-btn-sm:hover {
+  background: #252e42;
+  color: #e2e8f0;
+  border-color: #4a5568;
+}
+
+/* ── Room images ─────────────────────────────────────────────────────────── */
+
+.bp-rooms-section {
+  border-top: 1px solid #1e2533;
+  padding-top: 24px;
+}
+
+.bp-rooms-section h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+  color: #f7fafc;
+}
+
+.bp-rooms-sub {
+  font-size: 0.82rem;
+  color: #4a5568;
+  margin: 0 0 20px;
+}
+
+.bp-room-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.room-card {
+  background: #111827;
+  border: 1px solid #1e2533;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.room-card-title {
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #a0aec0;
+  margin: 0;
+  border-bottom: 1px solid #1e2533;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.room-card-placeholder {
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #4a5568;
+  font-size: 0.82rem;
+}
+
+.room-card-placeholder.shimmer {
+  background: linear-gradient(90deg, #111827 25%, #1a2035 50%, #111827 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  color: #4a5568;
+}
+
+.room-card-placeholder.error {
+  color: #fc8181;
+  font-size: 0.75rem;
+  padding: 8px;
+  text-align: center;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.room-card-img {
+  display: block;
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+}
