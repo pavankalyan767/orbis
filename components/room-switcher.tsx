@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import type { ReactorWorld } from "@/lib/reactor/world-provider";
 import { describeReactorError } from "@/lib/reactor/errors";
 
@@ -18,16 +18,18 @@ const DEFAULT_ROOMS: RoomWorldInfo[] = [
 ];
 
 export function useRoomSwitcherState() {
-  const [rooms, setRooms] = useState<RoomWorldInfo[]>(() => {
-    if (typeof window === "undefined") return DEFAULT_ROOMS;
+  const [rooms, setRooms] = useState<RoomWorldInfo[]>(DEFAULT_ROOMS);
+
+  useEffect(() => {
     const saved = localStorage.getItem("orbis-room-worlds");
-    if (!saved) return DEFAULT_ROOMS;
-    try {
-      return JSON.parse(saved) as RoomWorldInfo[];
-    } catch {
-      return DEFAULT_ROOMS;
+    if (saved) {
+      try {
+        setRooms(JSON.parse(saved) as RoomWorldInfo[]);
+      } catch {
+        // use default
+      }
     }
-  });
+  }, []);
 
   const [activeRoomId, setActiveRoomId] = useState<string>("living");
   const [switching, setSwitching] = useState(false);

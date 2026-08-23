@@ -59,7 +59,7 @@ function Console() {
 
   const worldPhase = worldState?.phase ?? "no_world";
   const buildingWorld = worldPhase === "creating" || worldPhase === "building";
-  
+
   // Video element MUST remain mounted whenever a world is ready, traveling, or stream is starting,
   // so <ReactorWorldVideo /> is in the DOM when startTravel() is called.
   const showVideo =
@@ -76,20 +76,19 @@ function Console() {
     if (process.env.NODE_ENV !== "development" || !streaming) return;
     const timer = setTimeout(() => {
       console.warn("Dev safety: terminating session after 20s to preserve credits.");
-      worldRef.current.disconnect().catch(() => {});
+      worldRef.current.disconnect().catch(() => { });
     }, 20_000);
     return () => clearTimeout(timer);
   }, [streaming]);
 
-  // STRICT CREDIT PROTECTION: Disconnect session when component unmounts or browser closes
+  // Disconnect session when user closes tab / navigates away to prevent credit leaks
   useEffect(() => {
     const handleUnload = () => {
-      worldRef.current.disconnect().catch(() => {});
+      worldRef.current.disconnect().catch(() => { });
     };
     window.addEventListener("beforeunload", handleUnload);
     return () => {
       window.removeEventListener("beforeunload", handleUnload);
-      worldRef.current.disconnect().catch(() => {});
     };
   }, []);
 
@@ -131,7 +130,7 @@ function Console() {
       if (p !== "connected" && p !== "starting_stream" && p !== "streaming") {
         await worldRef.current.connect(getReactorJwt);
       }
-      
+
       const savedWorldId =
         worldRef.current.worldState?.encrypted_world_id ||
         (typeof window !== "undefined" ? window.localStorage.getItem("reactor-world-id") : null);
