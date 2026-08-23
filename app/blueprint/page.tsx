@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react'
 import type { FloorPlan } from '@/navigation/types'
+import { generateRoomImage } from '@/lib/blueprint/roomImageGen'
 import dynamic from 'next/dynamic'
 
 // Three.js must be dynamically imported (no SSR)
@@ -134,17 +135,15 @@ export default function BlueprintPage() {
       setRoomImages(initialStatuses)
 
       for (const rp of parsed.roomPrompts) {
-        fetch('/api/blueprint/room-image', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ roomId: rp.roomId, floorPlan: parsed.floorPlan }),
-        })
-          .then((r) => r.json())
+        const room = parsed.floorPlan.rooms.find(r => r.id === rp.roomId)
+        if (!room) continue;
+
+        generateRoomImage(room, parsed.floorPlan)
           .then((imgData) => {
-            if (imgData.dataUrl) {
+            if (imgData.ok && imgData.dataUrl) {
               setRoomImages((prev) => ({
                 ...prev,
-                [rp.roomId]: { state: 'done', dataUrl: imgData.dataUrl },
+                [rp.roomId]: { state: 'done', dataUrl: imgData.dataUrl! },
               }))
             } else {
               setRoomImages((prev) => ({

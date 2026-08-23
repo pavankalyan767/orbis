@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { parseFloorPlanWithClaude } from '@/lib/blueprint/claudeParser'
+import { parseFloorPlanWithGemini } from '@/lib/blueprint/geminiParser'
 import { validateFloorPlan } from '@/lib/blueprint/validator'
 import { floorPlanToSVG } from '@/lib/blueprint/svgRenderer'
 
@@ -11,8 +12,16 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const
 type AllowedType = typeof ALLOWED_TYPES[number]
 
 export async function POST(req: NextRequest) {
-  // ── 1. Auth check ──────────────────────────────────────────────────────────
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const useGemini = process.env.GEMINI_USE === 'true'
+
+  if (useGemini && !process.env.GOOGLE_API_KEY) {
+    return NextResponse.json(
+      { error: 'GOOGLE_API_KEY is not configured on the server.' },
+      { status: 500 },
+    )
+  }
+
+  if (!useGemini && !process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json(
       { error: 'ANTHROPIC_API_KEY is not configured on the server.' },
       { status: 500 },
@@ -52,14 +61,18 @@ export async function POST(req: NextRequest) {
   const arrayBuffer = await file.arrayBuffer()
   const imageBase64 = Buffer.from(arrayBuffer).toString('base64')
 
-  // ── 4. Call Claude Vision ─────────────────────────────────────────────────
+  // ── 4. Call Vision Model ──────────────────────────────────────────────────
   let rawFloorPlan: unknown
   try {
-    rawFloorPlan = await parseFloorPlanWithClaude(imageBase64, mediaType)
+    if (useGemini) {
+      rawFloorPlan = await parseFloorPlanWithGemini(imageBase64, mediaType)
+    } else {
+      rawFloorPlan = await parseFloorPlanWithClaude(imageBase64, mediaType)
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     return NextResponse.json(
-      { error: `Claude parsing failed: ${message}` },
+      { error: `${useGemini ? 'Gemini' : 'Claude'} parsing failed: ${message}` },
       { status: 502 },
     )
   }

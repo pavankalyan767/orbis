@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <script src="https://js.puter.com/v2/"></script>
+  <script>
+    setTimeout(async () => {
+      try {
+        const img = await puter.ai.txt2img("A box");
+        console.log("SRC:", img.src);
+      } catch(e) {
+        console.error(e);
+      }
+    }, 1000);
+  </script>
+</body>
+</html>

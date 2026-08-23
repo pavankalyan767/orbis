@@ -25,7 +25,8 @@ export function buildRoomImagePrompt(room: Room, floorPlan: FloorPlan): string {
   return [
     `Architectural interior photograph of a ${room.name}.`,
     `Room dimensions approximately ${width} metres wide by ${height} metres deep.`,
-    `First-person perspective from standing eye level, ${exitStr}.`,
+    `First-person perspective standing just inside the entrance doorway, looking directly into the center of the room.`,
+    `The room's architecture expands outwards from the viewer, ${exitStr}.`,
     `Modern residential design, warm natural lighting from windows,`,
     `realistic materials, high detail, photorealistic render.`,
     `No people, no text, no watermarks.`,
@@ -33,60 +34,29 @@ export function buildRoomImagePrompt(room: Room, floorPlan: FloorPlan): string {
   ].join(' ')
 }
 
-// ─── Google Gemini Imagen Inference ─────────────────────────────────────────────
+import { puter } from '@heyputer/puter.js';
 
 export type RoomImageResult =
   | { ok: true;  roomId: string; dataUrl: string }
   | { ok: false; roomId: string; error: string }
 
 /**
- * Generates a room image via Google Gemini Imagen 3 API.
+ * Generates a room image via Puter.js API (Client-side only)
  */
 export async function generateRoomImage(
   room: Room,
   floorPlan: FloorPlan,
-  googleApiKey: string,
 ): Promise<RoomImageResult> {
   const prompt = buildRoomImagePrompt(room, floorPlan)
 
-  const GOOGLE_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${googleApiKey}`
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  }
-
   try {
-    const response = await fetch(GOOGLE_API_URL, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        instances: [
-          {
-            prompt: prompt
-          }
-        ],
-        parameters: {
-          sampleCount: 1,
-          aspectRatio: "16:9" // Standardized to match Happy Oyster Reactor dimension ratio
-        }
-      }),
-      signal: AbortSignal.timeout(45_000),
-    })
+    // Puter returns an HTMLImageElement
+    const imageElement = await puter.ai.txt2img(
+      prompt + " (Please generate this in 16:9 landscape aspect ratio)",
+      { model: "google/gemini-3-pro-image-preview" } // Using one of the supported free models
+    );
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      return { ok: false, roomId: room.id, error: `Google Imagen API failed (${response.status}): ${errorText.slice(0, 200)}` }
-    }
-
-    const data = await response.json()
-    
-    if (!data.predictions?.[0]?.bytesBase64Encoded) {
-      return { ok: false, roomId: room.id, error: "No image returned by Google Imagen API" }
-    }
-
-    const dataUrl = `data:image/jpeg;base64,${data.predictions[0].bytesBase64Encoded}`
-
-    return { ok: true, roomId: room.id, dataUrl }
+    return { ok: true, roomId: room.id, dataUrl: imageElement.src }
   } catch (err) {
     return {
       ok: false,

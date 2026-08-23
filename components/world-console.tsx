@@ -149,10 +149,21 @@ function Console() {
         <h1>
           Orbis <span>·</span> Happy Oyster
         </h1>
-        <span className="connection-chip" data-state={phase}>
-          <span className="dot" />
-          {CONNECTION_LABELS[phase] ?? phase}
-        </span>
+        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          {streaming && (
+            <button 
+              className="link-button" 
+              onClick={() => worldRef.current.endTravelSession().catch(() => {})}
+              style={{ color: "#ff4444", fontSize: "0.85rem", fontWeight: "bold" }}
+            >
+              End Travel (Stop Billing)
+            </button>
+          )}
+          <span className="connection-chip" data-state={phase}>
+            <span className="dot" />
+            {CONNECTION_LABELS[phase] ?? phase}
+          </span>
+        </div>
       </header>
 
       {(error || phase === "failed") && (

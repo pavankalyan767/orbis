@@ -1,7 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk'
 import type { FloorPlan } from '@/navigation/types'
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 const SYSTEM_PROMPT = `You are an expert architectural floor plan analyser.
 Your job is to extract a precise, machine-readable JSON representation of a floor plan image.
@@ -54,38 +51,44 @@ const USER_PROMPT = `Analyse this architectural floor plan image and return a Fl
 Be precise with room boundaries and wall positions.
 Identify every doorway and represent it as both a wall gap and an exit rectangle.`
 
-export async function parseFloorPlanWithClaude(
+export async function parseFloorPlanWithGemini(
   imageBase64: string,
   mediaType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif',
 ): Promise<FloorPlan> {
-  const message = await client.messages.create({
-    model: 'claude-opus-4-5',
-    max_tokens: 8192,
-    system: SYSTEM_PROMPT,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: {
-              type: 'base64',
-              media_type: mediaType,
-              data: imageBase64,
-            },
-          },
-          {
-            type: 'text',
-            text: USER_PROMPT,
-          },
-        ],
-      },
-    ],
+  const googleApiKey = process.env.GOOGLE_API_KEY
+  if (!googleApiKey) {
+    throw new Error('GOOGLE_API_KEY is not configured on the server.')
+  }
+
+  const GOOGLE_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${googleApiKey}`
+
+  const response = await fetch(GOOGLE_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [
+            { text: SYSTEM_PROMPT + '\n\n' + USER_PROMPT },
+            { inlineData: { mimeType: mediaType, data: imageBase64 } },
+          ],
+        },
+      ],
+      generationConfig: {
+        responseMimeType: "application/json"
+      }
+    }),
   })
 
-  const raw = message.content.find((c) => c.type === 'text')?.text ?? ''
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Gemini API returned an error (${response.status}): ${errorText}`)
+  }
 
-  // Strip any accidental markdown fences Claude might add
+  const data = await response.json()
+  const raw = data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+
+  // Strip any accidental markdown fences Gemini might add
   const cleaned = raw
     .replace(/^```[a-z]*\n?/i, '')
     .replace(/\n?```$/i, '')
@@ -95,7 +98,7 @@ export async function parseFloorPlanWithClaude(
   try {
     parsed = JSON.parse(cleaned)
   } catch {
-    throw new Error(`Claude returned invalid JSON: ${cleaned.slice(0, 200)}`)
+    throw new Error(`Gemini returned invalid JSON: ${cleaned.slice(0, 200)}`)
   }
 
   return parsed as FloorPlan

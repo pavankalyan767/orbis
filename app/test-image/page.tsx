@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { generateRoomImage } from '@/lib/blueprint/roomImageGen';
 
 export default function TestImagePage() {
   const [roomName, setRoomName] = useState('Living Room');
@@ -33,22 +34,13 @@ export default function TestImagePage() {
     };
 
     try {
-      const res = await fetch('/api/blueprint/room-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          roomId: 'test-room',
-          floorPlan: mockFloorPlan,
-        }),
-      });
+      const imgData = await generateRoomImage(mockFloorPlan.rooms[0] as any, mockFloorPlan as any);
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to generate image');
+      if (!imgData.ok || !imgData.dataUrl) {
+        throw new Error(imgData.error || 'Failed to generate image');
       }
 
-      setImageUrl(data.dataUrl);
+      setImageUrl(imgData.dataUrl);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -58,9 +50,9 @@ export default function TestImagePage() {
 
   return (
     <div style={{ maxWidth: '800px', margin: '40px auto', fontFamily: 'sans-serif' }}>
-      <h1>Test Image Generation (Google Gemini Imagen 3)</h1>
+      <h1>Test Image Generation (Puter API)</h1>
       <p style={{ color: '#666' }}>
-        This interface hits the exact same <code>/api/blueprint/room-image</code> route that the blueprint pipeline uses.
+        This interface uses Puter.js to generate images directly in your browser.
         It mocks a floor plan based on your inputs below.
       </p>
 
