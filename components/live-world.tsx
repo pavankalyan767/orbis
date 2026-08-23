@@ -28,7 +28,7 @@ export function LiveWorld({
   switching?: boolean;
   onSwitchRoom?: (roomId: string) => void;
 }) {
-  const { streaming, phase, endTravelSession } = world;
+  const { streaming, phase, disconnect } = world;
   const budget = world.maxExperienceTimeSec ?? ADVENTURE_MAX_EXPERIENCE_SEC;
   const [remaining, setRemaining] = useState(budget);
 
@@ -65,7 +65,7 @@ export function LiveWorld({
           <span className="hint">
             <b>WASD</b> move · <b>←↑↓→</b> look · <b>Space</b> jump · <b>Shift</b> sprint
           </span>
-          <button className="secondary" onClick={() => void endTravelSession()}>
+          <button className="secondary" onClick={() => void disconnect()}>
             End travel
           </button>
         </div>
@@ -77,10 +77,10 @@ export function LiveWorld({
         />
       ) : (
         <StageOverlay
-          title={travelEnded ? "Travel ended" : "World ready"}
+          title={travelEnded ? "Session closed" : "World ready"}
           subtitle={
             travelEnded
-              ? "The travel's time budget ran out — adventure travels last up to 2 minutes. The world itself is still ready."
+              ? "The Reactor session has been completely closed to stop all credit burn. Click below to reconnect and step in again."
               : "The world is built and waiting. Step in, or build something different."
           }
         >

@@ -27,7 +27,7 @@ const CONNECTION_LABELS: Record<string, string> = {
   connected: "Connected",
   starting_stream: "Opening stream",
   streaming: "Streaming",
-  ended: "Travel ended",
+  ended: "Session closed",
   failed: "Connection failed",
 };
 
@@ -66,19 +66,32 @@ function Console() {
     worldPhase === "ready" ||
     worldPhase === "traveling" ||
     streaming ||
-    phase === "starting_stream";
+    phase === "starting_stream" ||
+    phase === "ended";
 
-  // DEV SAFETY: Auto-end travel after 20 seconds of streaming during development.
-  // We call endTravelSession() instead of disconnect() so WebRTC stream stops,
-  // credit burn stops, but the Reactor session & world remain attached and ready!
+  // DEV SAFETY: Auto-disconnect after 20 seconds of streaming during development.
+  // We call disconnect() (which calls super.disconnect()) to close the WebSocket,
+  // terminate the remote GPU session allocation, and stop ALL credit burn!
   useEffect(() => {
     if (process.env.NODE_ENV !== "development" || !streaming) return;
     const timer = setTimeout(() => {
-      console.warn("Dev safety: ending travel session after 20s to save credits.");
-      worldRef.current.endTravelSession().catch(() => {});
+      console.warn("Dev safety: terminating session after 20s to preserve credits.");
+      worldRef.current.disconnect().catch(() => {});
     }, 20_000);
     return () => clearTimeout(timer);
   }, [streaming]);
+
+  // STRICT CREDIT PROTECTION: Disconnect session when component unmounts or browser closes
+  useEffect(() => {
+    const handleUnload = () => {
+      worldRef.current.disconnect().catch(() => {});
+    };
+    window.addEventListener("beforeunload", handleUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleUnload);
+      worldRef.current.disconnect().catch(() => {});
+    };
+  }, []);
 
   const handleSubmit = useCallback(async (prompt: string, image: File | null) => {
     setError(null);
@@ -86,10 +99,10 @@ function Console() {
     startAttempted.current = false;
     try {
       if (worldRef.current.streaming) {
-        await worldRef.current.endTravelSession();
+        await worldRef.current.disconnect();
       }
       const p = worldRef.current.phase;
-      // Connect if not already connected/streaming
+      // Connect if not already connected
       if (p !== "connected" && p !== "starting_stream" && p !== "streaming") {
         await worldRef.current.connect(getReactorJwt);
       }
