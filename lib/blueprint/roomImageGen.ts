@@ -36,7 +36,7 @@ export function buildRoomImagePrompt(room: Room, floorPlan: FloorPlan): string {
 }
 
 /** Flip to true to use Puter's txt2img instead of the local images in public/rooms/. */
-export const USE_PUTER_IMAGE_GEN: boolean = false
+export const USE_PUTER_IMAGE_GEN: boolean = true
 
 export type RoomImageResult =
   | { ok: true;  roomId: string; dataUrl: string }
@@ -74,18 +74,30 @@ export async function generateRoomImage(
     // Dynamic import keeps Puter out of the bundle while the toggle is off.
     const { puter } = await import('@heyputer/puter.js')
 
-    // Puter returns an HTMLImageElement
+    // txt2img(prompt, options) resolves to an HTMLImageElement whose src is a
+    // same-origin blob: URL (the driver uses responseType 'blob'), so the 16:9
+    // canvas crop downstream will not be tainted.
     const imageElement = await puter.ai.txt2img(
-      prompt + " (Please generate this in 16:9 landscape aspect ratio)",
-      { model: "google/gemini-3-pro-image-preview" } // Using one of the supported free models
-    );
+      prompt + ' (Please generate this in 16:9 landscape aspect ratio)',
+      { model: 'google/gemini-3-pro-image-preview' },
+    )
+
+    if (!imageElement?.src) throw new Error('Puter returned an image with no src')
 
     return { ok: true, roomId: room.id, dataUrl: imageElement.src }
   } catch (err) {
-    return {
-      ok: false,
-      roomId: room.id,
-      error: err instanceof Error ? err.message : String(err),
+    const message = err instanceof Error ? err.message : String(err)
+
+    // Demo safety net: Puter can fail for reasons outside our control — an
+    // auth popup the user dismissed, an unavailable model, a rate limit. Rather
+    // than leaving the room with no image at all (which blocks world
+    // generation entirely), fall back to the bundled art if we have some.
+    const localPath = resolveLocalRoomImage(room.id, room.name)
+    if (localPath) {
+      console.warn(`[roomImageGen] Puter failed for "${room.name}" (${message}) — using ${localPath}`)
+      return { ok: true, roomId: room.id, dataUrl: localPath }
     }
+
+    return { ok: false, roomId: room.id, error: `Puter image generation failed: ${message}` }
   }
 }

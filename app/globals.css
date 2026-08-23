@@ -227,15 +227,76 @@ body {
   font-weight: 600;
 }
 
-.room-switcher-hud {
+.hud .hud-actions {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(11, 13, 16, 0.85);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 4px 10px;
+}
+
+.hud .hud-actions button.secondary {
+  background: rgba(11, 13, 16, 0.82);
   backdrop-filter: blur(4px);
+  padding: 7px 14px;
+  font-size: 13px;
+}
+
+.hud button.hud-danger {
+  background: rgba(11, 13, 16, 0.82);
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--border));
+  color: var(--danger);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 12px;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+
+.hud button.hud-danger:hover {
+  background: rgba(255, 107, 107, 0.14);
+}
+
+/* ── Room switcher ────────────────────────────────────────────────────────
+   The bar is mounted in every phase (streaming, opening, switching, ended),
+   so it is positioned above the stage overlays rather than inside the HUD. */
+
+.world-room-bar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  z-index: 5;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.world-room-bar > * {
+  pointer-events: auto;
+  max-width: 100%;
+}
+
+.room-switcher-hud {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(11, 13, 16, 0.88);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 8px 10px;
+  backdrop-filter: blur(6px);
+}
+
+.room-switcher-hud[data-busy="true"] {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.room-switcher-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .room-switcher-hud .label {
@@ -262,6 +323,10 @@ body {
   transition: all 0.15s ease;
 }
 
+.room-chip-name {
+  white-space: nowrap;
+}
+
 .room-chip:hover:not(:disabled) {
   color: var(--text);
   border-color: var(--accent);
@@ -274,9 +339,37 @@ body {
   font-weight: 600;
 }
 
+/* No world built for this room yet: legible inline, not just a tooltip. */
 .room-chip.empty {
-  opacity: 0.5;
+  opacity: 0.8;
   cursor: not-allowed;
+  border-style: dashed;
+  background: transparent;
+}
+
+.room-chip-tag {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-dim);
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+
+/* The room a switch is currently heading to. */
+.room-chip.pending {
+  opacity: 1;
+  color: var(--text);
+  border-color: var(--accent);
+  cursor: progress;
+}
+
+.room-chip:disabled:not(.pending):not(.empty) {
+  opacity: 0.55;
 }
 
 .room-chip .active-dot {
@@ -284,6 +377,65 @@ body {
   height: 6px;
   border-radius: 50%;
   background: var(--accent-ink);
+}
+
+.chip-spinner {
+  flex: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+}
+
+.room-chip.active .chip-spinner {
+  border-color: color-mix(in srgb, var(--accent-ink) 30%, transparent);
+  border-top-color: var(--accent-ink);
+}
+
+.switch-stage {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.switch-error {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid rgba(255, 107, 107, 0.38);
+  color: #ffb3b3;
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.switch-error-text {
+  max-width: 52ch;
+  overflow-wrap: anywhere;
+}
+
+.switch-error-dismiss {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 1px 2px;
+}
+
+.switch-error-dismiss:hover {
+  color: #fff;
 }
 
 .world-form {

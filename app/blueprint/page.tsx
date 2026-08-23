@@ -281,14 +281,21 @@ function BlueprintApp() {
   const handleTransition = useCallback(async (transition: RoomTransition) => {
     const rs = roomSwitcherRef.current
     const target = rs.rooms.find((r) => r.id === transition.toRoomId)
+
     if (!target?.worldId) {
-      // No world built for that room yet — stay put rather than dead-ending.
+      // Don't fail silently — the player walked through a real door and
+      // deserves to know why nothing happened.
+      rs.setSwitchError(
+        `You walked into ${target?.name ?? transition.toRoomId}, but no world has been generated for it yet. Generate worlds first.`,
+      )
       return
     }
+
     const ok = await rs.switchRoom(transition.toRoomId, worldRef.current)
     if (ok) {
       // Contract from navigation/README.md: reset the player to the new room's
-      // spawn point so dead reckoning restarts from a known-good position.
+      // spawn point so dead reckoning restarts from a known-good position, and
+      // so they aren't left standing in the doorway they just crossed.
       navEngine?.respawnIn(transition.toRoomId)
     }
   }, [navEngine])
@@ -710,6 +717,9 @@ function BlueprintApp() {
                     rooms={roomSwitcher.rooms}
                     activeRoomId={roomSwitcher.activeRoomId}
                     switching={roomSwitcher.switching}
+                    switchStage={roomSwitcher.switchStage}
+                    switchError={roomSwitcher.switchError}
+                    onDismissError={() => roomSwitcher.setSwitchError(null)}
                     onSwitchRoom={async (id) => {
                       const ok = await roomSwitcher.switchRoom(id, world)
                       if (ok) navEngine?.respawnIn(id)
