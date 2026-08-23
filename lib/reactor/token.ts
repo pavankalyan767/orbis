@@ -8,18 +8,38 @@ import { TOKEN_ROUTE } from "./config";
  * server-side. Passed to the SDK as a lazy resolver so later Coordinator
  * requests can mint a fresh token transparently.
  */
+let tokenPromise: Promise<string> | null = null;
+let jwtExpiresAt = 0;
+
 export async function getReactorJwt(): Promise<string> {
-  const response = await fetch(TOKEN_ROUTE);
-  if (!response.ok) {
-    let detail = "";
-    try {
-      detail = ((await response.json()) as { error?: string }).error ?? "";
-    } catch {
-      // Non-JSON error body — fall through to the status line.
-    }
-    throw new Error(detail || `Reactor token request failed (${response.status})`);
+  // Reuse the cached promise if it's still valid for at least 5 more minutes
+  if (tokenPromise && Date.now() < jwtExpiresAt - 5 * 60 * 1000) {
+    return tokenPromise;
   }
-  const { jwt } = (await response.json()) as { jwt?: string };
-  if (!jwt) throw new Error("Reactor token response contained no JWT");
-  return jwt;
+
+  // Create a new promise and cache it immediately so concurrent calls await this exact same promise
+  tokenPromise = (async () => {
+    const response = await fetch(TOKEN_ROUTE, { cache: 'no-cache' });
+    if (!response.ok) {
+      let detail = "";
+      try {
+        detail = ((await response.json()) as { error?: string }).error ?? "";
+      } catch {
+        // Non-JSON error body — fall through to the status line.
+      }
+      tokenPromise = null; // Clear on failure so next call retries
+      throw new Error(detail || `Reactor token request failed (${response.status})`);
+    }
+    
+    const { jwt } = (await response.json()) as { jwt?: string };
+    if (!jwt) {
+      tokenPromise = null; // Clear on failure
+      throw new Error("Reactor token response contained no JWT");
+    }
+    
+    jwtExpiresAt = Date.now() + 60 * 60 * 1000; // 1 hour from now
+    return jwt;
+  })();
+  
+  return tokenPromise;
 }

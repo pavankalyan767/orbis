@@ -19,6 +19,7 @@ import { getReactorJwt } from "@/lib/reactor/token";
 import { WorldForm } from "./world-form";
 import { LiveWorld } from "./live-world";
 import { StageOverlay } from "./stage-overlay";
+import { RoomSwitcherHUD, useRoomSwitcherState } from "./room-switcher";
 
 const CONNECTION_LABELS: Record<string, string> = {
   idle: "Idle",
@@ -26,7 +27,7 @@ const CONNECTION_LABELS: Record<string, string> = {
   connected: "Connected",
   starting_stream: "Opening stream",
   streaming: "Streaming",
-  ended: "Travel ended",
+  ended: "Session closed",
   failed: "Connection failed",
 };
 
@@ -42,6 +43,8 @@ function Console() {
   const world = useReactorWorld();
   const { phase, worldState, streaming } = world;
 
+  const roomSwitcher = useRoomSwitcherState();
+
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formOpen, setFormOpen] = useState(true);
@@ -56,26 +59,38 @@ function Console() {
 
   const worldPhase = worldState?.phase ?? "no_world";
   const buildingWorld = worldPhase === "creating" || worldPhase === "building";
-  
+
   // Video element MUST remain mounted whenever a world is ready, traveling, or stream is starting,
   // so <ReactorWorldVideo /> is in the DOM when startTravel() is called.
   const showVideo =
     worldPhase === "ready" ||
     worldPhase === "traveling" ||
     streaming ||
-    phase === "starting_stream";
+    phase === "starting_stream" ||
+    phase === "ended";
 
-  // DEV SAFETY: Auto-end travel after 20 seconds of streaming during development.
-  // We call endTravelSession() instead of disconnect() so WebRTC stream stops,
-  // credit burn stops, but the Reactor session & world remain attached and ready!
+  // DEV SAFETY: Auto-disconnect after 20 seconds of streaming during development.
+  // We call disconnect() (which calls super.disconnect()) to close the WebSocket,
+  // terminate the remote GPU session allocation, and stop ALL credit burn!
   useEffect(() => {
     if (process.env.NODE_ENV !== "development" || !streaming) return;
     const timer = setTimeout(() => {
-      console.warn("Dev safety: ending travel session after 20s to save credits.");
-      worldRef.current.endTravelSession().catch(() => {});
+      console.warn("Dev safety: terminating session after 20s to preserve credits.");
+      worldRef.current.disconnect().catch(() => { });
     }, 20_000);
     return () => clearTimeout(timer);
   }, [streaming]);
+
+  // Disconnect session when user closes tab / navigates away to prevent credit leaks
+  useEffect(() => {
+    const handleUnload = () => {
+      worldRef.current.disconnect().catch(() => { });
+    };
+    window.addEventListener("beforeunload", handleUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleUnload);
+    };
+  }, []);
 
   const handleSubmit = useCallback(async (prompt: string, image: File | null) => {
     setError(null);
@@ -83,10 +98,10 @@ function Console() {
     startAttempted.current = false;
     try {
       if (worldRef.current.streaming) {
-        await worldRef.current.endTravelSession();
+        await worldRef.current.disconnect();
       }
       const p = worldRef.current.phase;
-      // Connect if not already connected/streaming
+      // Connect if not already connected
       if (p !== "connected" && p !== "starting_stream" && p !== "streaming") {
         await worldRef.current.connect(getReactorJwt);
       }
@@ -97,6 +112,7 @@ function Console() {
       });
       if (created.encrypted_world_id && typeof window !== "undefined") {
         window.localStorage.setItem("reactor-world-id", created.encrypted_world_id);
+        roomSwitcher.saveRoomWorld(roomSwitcher.activeRoomId, created.encrypted_world_id);
       }
       setFormOpen(false);
     } catch (submitError) {
@@ -104,7 +120,7 @@ function Console() {
     } finally {
       setSubmitting(false);
     }
-  }, []);
+  }, [roomSwitcher]);
 
   const enterAgain = useCallback(async () => {
     setError(null);
@@ -114,7 +130,7 @@ function Console() {
       if (p !== "connected" && p !== "starting_stream" && p !== "streaming") {
         await worldRef.current.connect(getReactorJwt);
       }
-      
+
       const savedWorldId =
         worldRef.current.worldState?.encrypted_world_id ||
         (typeof window !== "undefined" ? window.localStorage.getItem("reactor-world-id") : null);
@@ -143,6 +159,8 @@ function Console() {
     !submitting &&
     (formOpen || worldPhase === "no_world" || worldPhase === "failed");
 
+  const combinedError = error || roomSwitcher.switchError;
+
   return (
     <main className="console">
       <header className="console-header">
@@ -150,6 +168,20 @@ function Console() {
           Orbis <span>·</span> Happy Oyster
         </h1>
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <RoomSwitcherHUD
+            rooms={roomSwitcher.rooms}
+            activeRoomId={roomSwitcher.activeRoomId}
+            switching={roomSwitcher.switching}
+            onSwitch={(targetId) => {
+              const room = roomSwitcher.rooms.find((r) => r.id === targetId);
+              if (!room?.worldId) {
+                roomSwitcher.setActiveRoomId(targetId);
+                setFormOpen(true);
+              } else {
+                roomSwitcher.switchRoom(targetId, world);
+              }
+            }}
+          />
           {streaming && (
             <button 
               className="link-button" 
@@ -166,27 +198,33 @@ function Console() {
         </div>
       </header>
 
-      {(error || phase === "failed") && (
+      {(combinedError || phase === "failed") && (
         <div className="error-banner">
           <span>
-            {error ?? "Connection to Reactor failed — check REACTOR_API_KEY and your network."}{" "}
+            {combinedError ?? "Connection to Reactor failed — check REACTOR_API_KEY and your network."}{" "}
             {phase === "failed" && (
               <button className="link-button" onClick={reconnect}>
                 Reconnect
               </button>
             )}
           </span>
-          {error && (
-            <button onClick={() => setError(null)} aria-label="Dismiss">
-              ✕
-            </button>
-          )}
+          <button onClick={() => { setError(null); roomSwitcher.setSwitchError(null); }} aria-label="Dismiss">
+            ✕
+          </button>
         </div>
       )}
 
       <section className="stage" aria-label="World view">
         {showVideo ? (
-          <LiveWorld world={world} onEnterAgain={() => void enterAgain()} onNewWorld={() => setFormOpen(true)} />
+          <LiveWorld
+            world={world}
+            onEnterAgain={() => void enterAgain()}
+            onNewWorld={() => setFormOpen(true)}
+            rooms={roomSwitcher.rooms}
+            activeRoomId={roomSwitcher.activeRoomId}
+            switching={roomSwitcher.switching}
+            onSwitchRoom={(targetId) => roomSwitcher.switchRoom(targetId, world)}
+          />
         ) : buildingWorld ? (
           <StageOverlay
             spinner

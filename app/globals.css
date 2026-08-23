@@ -54,7 +54,6 @@ body {
   color: var(--accent);
 }
 
-
 .connection-chip {
   display: inline-flex;
   align-items: center;
@@ -226,6 +225,65 @@ body {
 .hud .hint b {
   color: var(--text);
   font-weight: 600;
+}
+
+.room-switcher-hud {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(11, 13, 16, 0.85);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  backdrop-filter: blur(4px);
+}
+
+.room-switcher-hud .label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.room-chip {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.room-chip:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.room-chip.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.room-chip.empty {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.room-chip .active-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-ink);
 }
 
 .world-form {
